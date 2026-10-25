@@ -17,24 +17,27 @@ rp_module_repo="git https://github.com/openMSX/openMSX.git RELEASE_21_0 :_get_co
 rp_module_section="opt"
 rp_module_flags=""
 
-function _get_commit_openmsx() {
-    local commit
-
-    # note: v20.0 introduces a breaking change in joystick mapping, requiring updated tcl scripts
+# note: v20.0 introduces a breaking change in joystick mapping, requiring updated tcl scripts
+function _get_openmsx_version() {
+    local version="v21"
 
     # RELEASE_21_0 documentation requires g++-12 (Debian Bookworm)
     # .. but compilation fails on RPi. g++-13 (Debian Trixie) does support compilation.
-    [[ "$__gcc_version" -lt 13 ]] && commit="5b581eec" # last commit in RELEASE_20_0
-    # RELEASE_20_0 requires g++-11
-    [[ "$__gcc_version" -lt 11 ]] && commit="a037c4db" # last commit in RELEASE_19_1
-    # RELEASE_19_0 & RELEASE_19_1 require g++-10 (Debian Bullseye)
-    [[ "$__gcc_version" -lt 10 ]] && commit="4843e805" # last commit in RELEASE_18_0
-    # 18_0 requires C++20 / g++ 9, 17_0 requires C++17 / g++ 8 (Debian Buster)
-    [[ "$__gcc_version" -lt 9 ]] && commit="127e2826" # shortly after 17_0
-    # use a commit after release 16_0 for older GCC versions (gcc 7.x)
-    [[ "$__gcc_version" -lt 8 ]] && commit="c8d90e70" # shortly after 16_0
-    # for GCC before 7, build from an earlier commit, before C++17 support was added (Debian Stretch)
-    [[ "$__gcc_version" -lt 7 ]] && commit="5ee25b62" # shortly after 0_15_0
+    [[ "$__gcc_version" -lt 13 ]] && version="v19"
+
+    [[ "$__gcc_version" -lt 10 ]] && { echo "OpenMSX RELEASE_19_x require g++-10 (Debian Bullseye)">&2; exit 1; }
+
+    echo "$version"
+}
+
+function _get_commit_openmsx() {
+    local commit
+    local version
+
+    version="$(_get_openmsx_version)" || fatalError "fatal"
+
+    [[ "$version" == "v19" ]] && commit="a037c4db" # last commit in RELEASE_19_1 (Aug 29, 2023)
+
     echo "$commit"
 }
 
@@ -88,8 +91,13 @@ function configure_openmsx() {
     copyDefaultConfig "$config" "$home/.openMSX/share/settings.xml"
     rm "$config"
 
+    local version
+    local variant
+    version="$(_get_openmsx_version)" || exit $?
+    [[ "$version" != "v19" ]] && variant="_v21"
+
     # Add an autostart script, used for joypad configuration
-    cp "$md_data/retropie-init.tcl" "$home/.openMSX/share/scripts"
+    cp "$md_data/retropie-init$variant.tcl" "$home/.openMSX/share/scripts/retropie-init.tcl"
     chown -R "$__user":"$__group" "$home/.openMSX/share/scripts"
 }
 
