@@ -13,16 +13,14 @@ rp_module_id="openmsx"
 rp_module_desc="MSX emulator OpenMSX"
 rp_module_help="ROM Extensions: .cas .rom .mx1 .mx2 .col .dsk .zip\n\nCopy your MSX/MSX2 games to $romdir/msx\nCopy the BIOS files to $biosdir/openmsx"
 rp_module_licence="GPL2 https://raw.githubusercontent.com/openMSX/openMSX/master/doc/GPL.txt"
-rp_module_repo="git https://github.com/openMSX/openMSX.git RELEASE_21_0 :_get_commit_openmsx"
+rp_module_repo="git https://github.com/openMSX/openMSX.git RELEASE_22_0 :_get_commit_openmsx"
 rp_module_section="opt"
 rp_module_flags=""
 
 # note: v20.0 introduces a breaking change in joystick mapping, requiring updated tcl scripts
 function _get_openmsx_version() {
-    local version="v21"
+    local version="v22"
 
-    # RELEASE_21_0 documentation requires g++-12 (Debian Bookworm)
-    # .. but compilation fails on RPi. g++-13 (Debian Trixie) does support compilation.
     [[ "$__gcc_version" -lt 13 ]] && version="v19"
 
     [[ "$__gcc_version" -lt 10 ]] && { echo "OpenMSX RELEASE_19_x require g++-10 (Debian Bullseye)">&2; exit 1; }
@@ -42,7 +40,17 @@ function _get_commit_openmsx() {
 }
 
 function depends_openmsx() {
-    local depends=(libsdl2-dev libsdl2-ttf-dev libao-dev libogg-dev libtheora-dev libxml2-dev libvorbis-dev tcl-dev libasound2-dev libfreetype6-dev libpng-dev libglew-dev)
+    local depends
+    local version
+
+    version="$(_get_openmsx_version)" || exit $?
+
+    if [[ "$version" == "v19" ]]; then
+        depends=(libsdl2-dev libsdl2-ttf-dev libao-dev libogg-dev libtheora-dev libxml2-dev libvorbis-dev tcl-dev libasound2-dev libfreetype6-dev)
+        isPlatform "x11" && depends+=(libglew-dev)
+    else
+        depends=(libsdl2-dev libsdl2-ttf-dev libao-dev libogg-dev libtheora-dev libxml2-dev libvorbis-dev tcl-dev libasound2-dev libfreetype6-dev libpng-dev libglew-dev)
+    fi
 
     getDepends "${depends[@]}"
 }
@@ -94,7 +102,7 @@ function configure_openmsx() {
     local version
     local variant
     version="$(_get_openmsx_version)" || exit $?
-    [[ "$version" != "v19" ]] && variant="_v21"
+    [[ "$version" != "v19" ]] && variant="_v22"
 
     # Add an autostart script, used for joypad configuration
     cp "$md_data/retropie-init$variant.tcl" "$home/.openMSX/share/scripts/retropie-init.tcl"

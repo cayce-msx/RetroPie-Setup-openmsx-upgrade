@@ -22,15 +22,15 @@ proc init {} {
         regsub -all {[:><?\"\/\\|*]} $joy_name "" joy_name
 
         if { !($rom_name eq "") } {
-            if { [ file exists "$config_dir/game/${rom_name}_v21.tcl" ] } {
+            if { [ file exists "$config_dir/game/${rom_name}_v22.tcl" ] } {
                 # map game-specific joystick configuration
-                load_config_joystick $joy_idx $joy_id $rom_name "$config_dir/game/${rom_name}_v21.tcl"
+                load_config_joystick $joy_idx $joy_id $rom_name "$config_dir/game/${rom_name}_v22.tcl"
                 return
             }
         }
 
-        if { [file exists "$config_dir/${joy_name}_v21.tcl"] } {
-            load_config_joystick $joy_idx $joy_id $joy_name "$config_dir/${joy_name}_v21.tcl"
+        if { [file exists "$config_dir/${joy_name}_v22.tcl"] } {
+            load_config_joystick $joy_idx $joy_id $joy_name "$config_dir/${joy_name}_v22.tcl"
         } else {
             # apply default mapping cf. https://github.com/openMSX/openMSX/blob/5ae314755fd1d2e89b0504caad47d2772b043a32/src/input/MSXJoystick.cc#L22
             set cfg_var "msxjoystick${joy_idx}_config"
