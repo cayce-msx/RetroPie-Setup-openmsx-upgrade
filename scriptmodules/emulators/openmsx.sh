@@ -13,39 +13,56 @@ rp_module_id="openmsx"
 rp_module_desc="MSX emulator OpenMSX"
 rp_module_help="ROM Extensions: .cas .rom .mx1 .mx2 .col .dsk .zip\n\nCopy your MSX/MSX2 games to $romdir/msx\nCopy the BIOS files to $biosdir/openmsx"
 rp_module_licence="GPL2 https://raw.githubusercontent.com/openMSX/openMSX/master/doc/GPL.txt"
-rp_module_repo="git https://github.com/openMSX/openMSX.git RELEASE_22_0 :_get_commit_openmsx"
+rp_module_repo="git https://github.com/openMSX/openMSX.git :_get_branch_openmsx :_get_commit_openmsx"
 rp_module_section="opt"
-rp_module_flags=""
+rp_module_flags="!:\$__gcc_version:-lt:8"
 
-# note: v20.0 introduces a breaking change in joystick mapping, requiring updated tcl scripts
-function _get_openmsx_version() {
-    local version="v22"
+function _get_version_openmsx() {
+    local version="22"
 
-    [[ "$__gcc_version" -lt 13 ]] && version="v19"
-
-    [[ "$__gcc_version" -lt 10 ]] && { echo "OpenMSX RELEASE_19_x require g++-10 (Debian Bullseye)">&2; exit 1; }
+    # RELEASE_22_0 requires g++-13 (Debian Trixie)
+    [[ "$__gcc_version" -lt 13 ]] && version="21"
+    # RELEASE_21_0 requires g++-12 (Debian Bookworm)
+    # v20.0 introduces a breaking change in joystick mapping
+    # this was resolved in v22, and requires updated tcl scripts
+    [[ "$__gcc_version" -lt 12 ]] && version="20"
+    # RELEASE_20_0 requires g++-11
+    [[ "$__gcc_version" -lt 11 ]] && version="19"
+    # RELEASE_19_0 & RELEASE_19_1 require g++-10 (Debian Bullseye)
+    [[ "$__gcc_version" -lt 10 ]] && version="18"
+    # RELEASE_18_0 requires C++20 / g++ 9
+    [[ "$__gcc_version" -lt 9 ]] && version="17"
 
     echo "$version"
 }
 
+function _get_branch_openmsx() {
+    local branch
+    local version="$(_get_version_openmsx)"
+    case "$version" in
+        "22"|"21"|"20"|"18")
+            branch="RELEASE_${version}_0";;
+        "19")
+            branch="RELEASE_${version}_1";;
+    esac
+    echo "$branch"
+}
+
 function _get_commit_openmsx() {
     local commit
-    local version
-
-    version="$(_get_openmsx_version)" || fatalError "fatal"
-
-    [[ "$version" == "v19" ]] && commit="a037c4db" # last commit in RELEASE_19_1 (Aug 29, 2023)
-
+    local version="$(_get_version_openmsx)"
+    case "$version" in
+        "17")
+            commit="127e2826";; # shortly after 17_0
+    esac
     echo "$commit"
 }
 
 function depends_openmsx() {
     local depends
-    local version
+    local version="$(_get_version_openmsx)"
 
-    version="$(_get_openmsx_version)" || exit $?
-
-    if [[ "$version" == "v19" ]]; then
+    if [[ "$version" -lt 20 ]]; then
         depends=(libsdl2-dev libsdl2-ttf-dev libao-dev libogg-dev libtheora-dev libxml2-dev libvorbis-dev tcl-dev libasound2-dev libfreetype6-dev)
         isPlatform "x11" && depends+=(libglew-dev)
     else
@@ -99,10 +116,9 @@ function configure_openmsx() {
     copyDefaultConfig "$config" "$home/.openMSX/share/settings.xml"
     rm "$config"
 
-    local version
     local variant
-    version="$(_get_openmsx_version)" || exit $?
-    [[ "$version" != "v19" ]] && variant="_v22"
+    local version="$(_get_version_openmsx)"
+    [[ "$version" -ge 22 ]] && variant="_v22"
 
     # Add an autostart script, used for joypad configuration
     cp "$md_data/retropie-init$variant.tcl" "$home/.openMSX/share/scripts/retropie-init.tcl"
